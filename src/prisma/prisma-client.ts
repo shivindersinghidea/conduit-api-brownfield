@@ -1,4 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+let PrismaClient: any;
+try {
+  PrismaClient = require('@prisma/client').PrismaClient;
+} catch (e) {
+  // In test environments the client may not be generated; fall back to a noop object which tests can mock
+  PrismaClient = null;
+}
 
 declare global {
   namespace NodeJS {
@@ -8,15 +14,16 @@ declare global {
 
 // add prisma to the NodeJS global type
 interface CustomNodeJsGlobal extends NodeJS.Global {
-  prisma: PrismaClient;
+  prisma: any;
 }
 
 // Prevent multiple instances of Prisma Client in development
 declare const global: CustomNodeJsGlobal;
 
-const prisma = global.prisma || new PrismaClient();
+const isTest = process.env.NODE_ENV === 'test';
+const prisma = global.prisma || (PrismaClient && !isTest ? new PrismaClient() : {});
 
-if (process.env.NODE_ENV === 'development') {
+if (!isTest && process.env.NODE_ENV === 'development' && PrismaClient) {
   global.prisma = prisma;
 }
 
